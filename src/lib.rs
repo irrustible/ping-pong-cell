@@ -118,6 +118,35 @@ impl<T: Eq + Send> PingPongCell<T> {
         }
     }
 }
+
+impl<T: Clone + Eq + Send> PingPongCell<T> {
+    /// A single CAS operation
+    pub fn compare_swap_clone(&self, expected: &T, new: T) -> Result<(), (T, Option<T>)> {
+        loop {
+            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
+                return unsafe {
+                    let inner = self.value.get();
+                    if let Some(val) = &*inner {
+                        let ret = if val == expected {
+                            *inner = Some(new);
+                            Ok(())
+                        } else {
+                            Err((new, Some(val.clone())))
+                        };
+                        self.state.store(WAITING, Release);
+                        ret
+                    } else {
+                        self.state.store(WAITING, Release);
+                        Err((new, None))
+                    }
+                }
+            } else {
+                spin_loop_hint();
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // #[test]
