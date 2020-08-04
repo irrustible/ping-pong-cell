@@ -25,47 +25,34 @@ impl<T: Send> PingPongCell<T> {
 
     /// If there is a value currently inside, take it.
     pub fn take(&self) -> Option<T> {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                return unsafe {
-                    let val = (*self.value.get()).take();
-                    self.state.store(WORKING, Release);
-                    val
-                }
-            } else {
-                spin_loop_hint();
-            }
-        }
+        self.transact(|state| state.take() )
     }
 
     /// Replace the value inside unconditionally.
     pub fn put(&self, value: T) {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                unsafe {
-                    *self.value.get() = Some(value);
-                    self.state.store(WAITING, Release);
-                    return
-                }
-            } else {
-                spin_loop_hint();
-            }
-        }
+        self.transact(|state| { *state = Some(value); })
     }
 
     /// Puts a value inside only if there is not one currently.
     pub fn put_if_empty(&self, value: T) -> Result<(), T> {
+        self.transact(|state| {
+            if state.is_some() {
+                Err(value)
+            } else {
+                *state = Some(value);
+                Ok(())
+            }
+        })
+    }
+
+    pub fn transact<F, R>(&self, fun: F) -> R
+    where F: FnOnce(&mut Option<T>) -> R {
         loop {
             if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
                 return unsafe {
-                    let inner = self.value.get();
-                    if (*inner).is_some() {
-                        Err(value)
-                    } else {
-                        *inner = Some(value);
-                        self.state.store(WAITING, Release);
-                        Ok(())
-                    }
+                    let ret = fun(&mut *self.value.get());
+                    self.state.store(WAITING, Release);
+                    ret
                 }
             } else {
                 spin_loop_hint();
@@ -77,69 +64,36 @@ impl<T: Send> PingPongCell<T> {
 impl<T: Clone + Send> PingPongCell<T> {
 
     pub fn put_empty_clone(&self, value: T) -> Result<(), (T, T)> {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                return unsafe {
-                    let inner = self.value.get();
-                    let ret = match &*inner {
-                        Some(val) => {
-                            Err((value, val.clone()))
-                        }
-                        _ => {
-                            *inner = Some(value);
-                            Ok(())
-                        }
-                    };
-                    self.state.store(WAITING, Release);
-                    ret
-                }
+        self.transact(|state| {
+            if let Some(ref old) = state {
+                Err((value, old.clone()))
             } else {
-                spin_loop_hint();
+                *state = Some(value);
+                Ok(())
             }
-        }
+        })
     }
 
     /// Clones the contents, if any.
     pub fn clone_inner(&self) -> Option<T> {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                return unsafe {
-                    let val = (*self.value.get()).clone();
-                    self.state.store(WAITING, Release);
-                    val
-                }
-            } else {
-                spin_loop_hint();
-            }
-        }
+        self.transact(|state| {
+            state.clone()
+        })
     }
 }
 
 impl<T: Eq + Send> PingPongCell<T> {
     /// A single CAS operation
     pub fn compare_and_swap(&self, expected: &T, new: T) -> Result<(), T> {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                return unsafe {
-                    let inner = self.value.get();
-                    if let Some(val) = &*inner {
-                        let ret = if val == expected {
-                            *inner = Some(new);
-                            Ok(())
-                        } else {
-                            Err(new)
-                        };
-                        self.state.store(WAITING, Release);
-                        ret
-                    } else {
-                        self.state.store(WAITING, Release);
-                        Err(new)
-                    }
+        self.transact(|state| {
+            if let Some(val) = state {
+                if val == expected {
+                    *state = Some(new);
+                    return Ok(())
                 }
-            } else {
-                spin_loop_hint();
             }
-        }
+            Err(new)
+        })
     }
 }
 
@@ -147,28 +101,18 @@ impl<T: Clone + Eq + Send> PingPongCell<T> {
 
     /// A single CAS operation
     pub fn compare_swap_clone(&self, expected: &T, new: T) -> Result<(), (T, Option<T>)> {
-        loop {
-            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
-                return unsafe {
-                    let inner = self.value.get();
-                    if let Some(val) = &*inner {
-                        let ret = if val == expected {
-                            *inner = Some(new);
-                            Ok(())
-                        } else {
-                            Err((new, Some(val.clone())))
-                        };
-                        self.state.store(WAITING, Release);
-                        ret
-                    } else {
-                        self.state.store(WAITING, Release);
-                        Err((new, None))
-                    }
+        self.transact(|state| {
+            if let Some(val) = state {
+                if val == expected {
+                    *state = Some(new);
+                    Ok(())
+                } else {
+                    Err((new, Some(val.clone())))
                 }
             } else {
-                spin_loop_hint();
+                Err((new, None))
             }
-        }
+        })
     }
 }
 
