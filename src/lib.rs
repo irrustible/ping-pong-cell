@@ -75,6 +75,30 @@ impl<T: Send> PingPongCell<T> {
 }
 
 impl<T: Clone + Send> PingPongCell<T> {
+
+    pub fn put_empty_clone(&self, value: T) -> Result<(), (T, T)> {
+        loop {
+            if let WAITING = self.state.compare_and_swap(WAITING, WORKING, Acquire) {
+                return unsafe {
+                    let inner = self.value.get();
+                    let ret = match &*inner {
+                        Some(val) => {
+                            Err((value, val.clone()))
+                        }
+                        _ => {
+                            *inner = Some(value);
+                            Ok(())
+                        }
+                    };
+                    self.state.store(WAITING, Release);
+                    ret
+                }
+            } else {
+                spin_loop_hint();
+            }
+        }
+    }
+
     /// Clones the contents, if any.
     pub fn clone_inner(&self) -> Option<T> {
         loop {
@@ -120,6 +144,7 @@ impl<T: Eq + Send> PingPongCell<T> {
 }
 
 impl<T: Clone + Eq + Send> PingPongCell<T> {
+
     /// A single CAS operation
     pub fn compare_swap_clone(&self, expected: &T, new: T) -> Result<(), (T, Option<T>)> {
         loop {
