@@ -1,8 +1,8 @@
 # ping-pong-cell
 
-<!-- [![License](https://img.shields.io/crates/l/ping-pong-cell.svg)](https://github.com/irrustible/ping-pong-cell/blob/main/LICENSE) -->
-<!-- [![Package](https://img.shields.io/crates/v/ping-pong-cell.svg)](https://crates.io/crates/ping-pong-cell) -->
-<!-- [![Documentation](https://docs.rs/ping-pong-cell/badge.svg)](https://docs.rs/ping-pong-cell) -->
+[![License](https://img.shields.io/crates/l/ping-pong-cell.svg)](https://github.com/irrustible/ping-pong-cell/blob/main/LICENSE)
+[![Package](https://img.shields.io/crates/v/ping-pong-cell.svg)](https://crates.io/crates/ping-pong-cell)
+[![Documentation](https://docs.rs/ping-pong-cell/badge.svg)](https://docs.rs/ping-pong-cell)
 
 An atomic cell game for up to two players.
 

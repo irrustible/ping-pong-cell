@@ -10,6 +10,9 @@ pub struct PingPongCell<T> {
     value: UnsafeCell<Option<T>>,
 }
 
+unsafe impl<T: Send> Send for PingPongCell<T> {}
+unsafe impl<T: Sync> Sync for PingPongCell<T> {}
+
 const WAITING: usize = 0;
 const WORKING: usize = 0b01;
 
@@ -45,6 +48,7 @@ impl<T: Send> PingPongCell<T> {
         })
     }
 
+    /// Runs a closure with a mutable reference to the state
     pub fn transact<F, R>(&self, fun: F) -> R
     where F: FnOnce(&mut Option<T>) -> R {
         loop {
@@ -63,6 +67,7 @@ impl<T: Send> PingPongCell<T> {
 
 impl<T: Clone + Send> PingPongCell<T> {
 
+    /// `put_empty()`, but clones the current contents on failure
     pub fn put_empty_clone(&self, value: T) -> Result<(), (T, T)> {
         self.transact(|state| {
             if let Some(ref old) = state {
@@ -99,8 +104,12 @@ impl<T: Eq + Send> PingPongCell<T> {
 
 impl<T: Clone + Eq + Send> PingPongCell<T> {
 
-    /// A single CAS operation
-    pub fn compare_swap_clone(&self, expected: &T, new: T) -> Result<(), (T, Option<T>)> {
+    /// A single CAS operation, cloning the current value on failure
+    pub fn compare_swap_clone(
+        &self,
+        expected: &T,
+        new: T
+    ) -> Result<(), (T, Option<T>)> {
         self.transact(|state| {
             if let Some(val) = state {
                 if val == expected {

@@ -1,8 +1,16 @@
 [package]
 name = "ping-pong-cell"
 version = "0.1.0"
+description = "An atomic cell for up to two threads."
+keywords = ["atomic", "cell"]
+categories = ["asynchronous", "concurrency", "data-structures"]
 authors = ["James Laver <james.laver@gmail.com>"]
+homepage = "https://github.com/irrustible/ping-pong-cell"
+repository = "https://github.com/irrustible/ping-pong-cell"
+documentation = "https://docs.rs/ping-pong-cell"
+license = "MPL-2.0"
 edition = "2018"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
