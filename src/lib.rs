@@ -51,17 +51,12 @@ impl<T: Send> PingPongCell<T> {
     where
         F: FnOnce(&mut Option<T>) -> R,
     {
-        loop {
-            if self.is_working.compare_and_swap(false, true, Acquire) {
-                spin_loop_hint();
-            } else {
-                return unsafe {
-                    let ret = fun(&mut *self.value.get());
-                    self.is_working.store(false, Release);
-                    ret
-                };
-            }
+        while self.is_working.compare_and_swap(false, true, Acquire) {
+            spin_loop_hint();
         }
+        let ret = unsafe { fun(&mut *self.value.get()) };
+        self.is_working.store(false, Release);
+        ret
     }
 }
 
