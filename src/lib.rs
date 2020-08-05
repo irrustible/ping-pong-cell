@@ -83,8 +83,8 @@ impl<T: Eq + Send> PingPongCell<T> {
     /// A single CAS operation
     pub fn compare_and_swap(&self, expected: &T, new: T) -> Result<(), T> {
         self.transact(|state| match state {
-            Some(val) if val == expected => {
-                *state = Some(new);
+            Some(ref mut val) if val == expected => {
+                *val = new;
                 Ok(())
             }
             _ => Err(new),
