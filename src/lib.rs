@@ -16,7 +16,7 @@ unsafe impl<T: Sync> Sync for PingPongCell<T> {}
 const WAITING: usize = 0;
 const WORKING: usize = 0b01;
 
-impl<T: Send> PingPongCell<T> {
+impl<T> PingPongCell<T> {
 
     /// Create a new PingPongCell
     pub fn new(value: Option<T>) -> Self {
@@ -65,7 +65,7 @@ impl<T: Send> PingPongCell<T> {
     }
 }
 
-impl<T: Clone + Send> PingPongCell<T> {
+impl<T: Clone> PingPongCell<T> {
 
     /// `put_empty()`, but clones the current contents on failure
     pub fn put_empty_clone(&self, value: T) -> Result<(), (T, T)> {
@@ -87,7 +87,7 @@ impl<T: Clone + Send> PingPongCell<T> {
     }
 }
 
-impl<T: Eq + Send> PingPongCell<T> {
+impl<T: Eq> PingPongCell<T> {
     /// A single CAS operation
     pub fn compare_and_swap(&self, expected: &T, new: T) -> Result<(), T> {
         self.transact(|state| {
@@ -102,7 +102,7 @@ impl<T: Eq + Send> PingPongCell<T> {
     }
 }
 
-impl<T: Clone + Eq + Send> PingPongCell<T> {
+impl<T: Clone + Eq> PingPongCell<T> {
 
     /// A single CAS operation, cloning the current value on failure
     pub fn compare_swap_clone(
