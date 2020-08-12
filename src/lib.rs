@@ -13,7 +13,7 @@ pub struct PingPongCell<T> {
 unsafe impl<T: Send> Send for PingPongCell<T> {}
 unsafe impl<T: Sync> Sync for PingPongCell<T> {}
 
-impl<T: Send> PingPongCell<T> {
+impl<T> PingPongCell<T> {
     /// Create a new PingPongCell
     pub fn new(value: Option<T>) -> Self {
         PingPongCell {
@@ -60,7 +60,7 @@ impl<T: Send> PingPongCell<T> {
     }
 }
 
-impl<T: Clone + Send> PingPongCell<T> {
+impl<T: Clone> PingPongCell<T> {
     /// `put_empty()`, but clones the current contents on failure
     pub fn put_empty_clone(&self, value: T) -> Result<(), (T, T)> {
         self.transact(|state| {
@@ -92,7 +92,7 @@ impl<T: Eq> PingPongCell<T> {
     }
 }
 
-impl<T: Clone + Eq + Send> PingPongCell<T> {
+impl<T: Clone + Eq> PingPongCell<T> {
     /// A single CAS operation, cloning the current value on failure
     pub fn compare_swap_clone(&self, expected: &T, new: T) -> Result<(), (T, Option<T>)> {
         self.transact(|state| match state {
