@@ -79,7 +79,7 @@ impl<T: Clone + Send> PingPongCell<T> {
     }
 }
 
-impl<T: Eq + Send> PingPongCell<T> {
+impl<T: Eq> PingPongCell<T> {
     /// A single CAS operation
     pub fn compare_and_swap(&self, expected: &T, new: T) -> Result<(), T> {
         self.transact(|state| match state {
